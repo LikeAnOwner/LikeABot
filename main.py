@@ -8,6 +8,8 @@ starter_role = 'Member'
 channels = [727254770531958875, 827625896756117585, 827627169903542313, 727252459524718659]
 voice_category_id = 727484335015460916
 voice_channel_list = []
+private_category_id = 941980141972766760
+private_creating_room = 941983561337159720
 
 with open('token.txt', 'r') as token_file:
   token = token_file.read()
@@ -41,7 +43,7 @@ async def on_voice_state_update(member, before, after):
                 if not channel.members:
                     voice_channel_list.append(channel.id)
 
-    if len(voice_channel_list) == 0:
+    if not voice_channel_list:
         category = client.get_channel(voice_category_id)
         await member.guild.create_voice_channel('Game Room', category = category)
 
@@ -53,5 +55,26 @@ async def on_voice_state_update(member, before, after):
             print(str(existing_channel))
 
     voice_channel_list.clear()
+
+    channel = before.channel or after.channel
+    if channel.id == private_creating_room:
+        if before.channel is None and after.channel is not None:
+            category = client.get_channel(private_category_id)
+            await member.guild.create_voice_channel(member.name + '\'s Room', category = category)
+            channel = discord.utils.get(client.get_all_channels(), name=member.name + '\'s Room')
+#           overwrite = discord.PermissionOverwrite()
+#           overwrite.send_messages = False
+#           overwrite.read_messages = True
+#           await channel.set_permissions(member, overwrite=overwrite)
+            await member.move_to(channel)
+    
+    if channel.category_id == private_category_id:
+        if before.channel is not None and after.channel is None:
+            if before.channel.name == member.name + '\'s Room':
+                existing_channel = discord.utils.get(member.guild.channels, id=before.channel.id)
+                if existing_channel is not None:
+                    await existing_channel.delete()
+                else:
+                    print(str(existing_channel))
 
 client.run(token)
