@@ -42,6 +42,8 @@ async def on_voice_state_update(member, before, after):
             if channel.category_id == voice_category_id:
                 if not channel.members:
                     voice_channel_list.append(channel.id)
+                if channel.bitrate != 128000:
+                    await channel.edit(bitrate=128000)
 
     if not voice_channel_list:
         category = client.get_channel(voice_category_id)
@@ -62,10 +64,13 @@ async def on_voice_state_update(member, before, after):
             category = client.get_channel(private_category_id)
             await member.guild.create_voice_channel(member.name + '\'s Room', category = category)
             channel = discord.utils.get(client.get_all_channels(), name=member.name + '\'s Room')
-#           overwrite = discord.PermissionOverwrite()
-#           overwrite.send_messages = False
-#           overwrite.read_messages = True
-#           await channel.set_permissions(member, overwrite=overwrite)
+            overwrite = discord.PermissionOverwrite()
+            overwrite.move_members = True
+            overwrite.mute_members = True
+            overwrite.view_channel = True
+            overwrite.connect = True
+            await channel.set_permissions(member, overwrite=overwrite)
+            await channel.edit(user_limit=5, bitrate=128000)
             await member.move_to(channel)
     
     if channel.category_id == private_category_id:
