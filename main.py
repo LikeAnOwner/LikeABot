@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 import random
 
 prefix = '!'
@@ -14,7 +15,8 @@ with open('token.txt', 'r') as token_file:
 intents = discord.Intents.default()
 intents.members = True
 
-client = discord.Client(intents=intents)
+client = commands.Bot(command_prefix=prefix, intents=intents)
+client.remove_command('help')
 
 @client.event
 async def on_ready():
@@ -26,16 +28,10 @@ async def on_member_join(member):
     role = discord.utils.get(member.guild.roles, name=starter_role)
     await member.add_roles(role)
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.channel.id not in channels:
-        return
-    
-    if message.content == f'{prefix}help':
-        await message.channel.send('Aktuell stehen noch keine Befehle zur Verfügung!')
+@client.command()
+async def help(ctx):
+    if ctx.channel.id in channels:
+        await ctx.send('Aktuell stehen noch keine Befehle zur Verfügung!')
 
 @client.event
 async def on_voice_state_update(member, before, after):
