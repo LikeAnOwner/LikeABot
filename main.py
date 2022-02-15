@@ -58,9 +58,8 @@ async def on_voice_state_update(member, before, after):
 
     voice_channel_list.clear()
 
-    channel = before.channel or after.channel
-    if channel.id == private_creating_room:
-        if before.channel is None and after.channel is not None:
+    if not before.channel:
+        if after.channel.id == private_creating_room:
             category = client.get_channel(private_category_id)
             await member.guild.create_voice_channel(member.name + '\'s Room', category = category)
             channel = discord.utils.get(client.get_all_channels(), name=member.name + '\'s Room')
@@ -72,14 +71,41 @@ async def on_voice_state_update(member, before, after):
             await channel.set_permissions(member, overwrite=overwrite)
             await channel.edit(user_limit=5, bitrate=128000)
             await member.move_to(channel)
-    
-    if channel.category_id == private_category_id:
-        if before.channel is not None and after.channel is None:
-            if before.channel.name == member.name + '\'s Room':
+    elif before.channel and after.channel:
+        if before.channel.name == member.name + '\'s Room':
+            if after.channel.id == private_creating_room:
+                channel = discord.utils.get(client.get_all_channels(), name='Wartezimmer')
+                await member.move_to(channel)
                 existing_channel = discord.utils.get(member.guild.channels, id=before.channel.id)
                 if existing_channel is not None:
                     await existing_channel.delete()
                 else:
                     print(str(existing_channel))
+                return
+        if after.channel.id == private_creating_room:
+            category = client.get_channel(private_category_id)
+            await member.guild.create_voice_channel(member.name + '\'s Room', category = category)
+            channel = discord.utils.get(client.get_all_channels(), name=member.name + '\'s Room')
+            overwrite = discord.PermissionOverwrite()
+            overwrite.move_members = True
+            overwrite.mute_members = True
+            overwrite.view_channel = True
+            overwrite.connect = True
+            await channel.set_permissions(member, overwrite=overwrite)
+            await channel.edit(user_limit=5, bitrate=128000)
+            await member.move_to(channel)
+        if before.channel.name == member.name + '\'s Room':
+            existing_channel = discord.utils.get(member.guild.channels, id=before.channel.id)
+            if existing_channel is not None:
+                await existing_channel.delete()
+            else:
+                print(str(existing_channel))
+    elif before.channel and not after.channel:
+        if before.channel.name == member.name + '\'s Room':
+            existing_channel = discord.utils.get(member.guild.channels, id=before.channel.id)
+            if existing_channel is not None:
+                await existing_channel.delete()
+            else:
+                print(str(existing_channel))
 
 client.run(token)
