@@ -1,6 +1,10 @@
+from dis import disco
 import discord
 from discord.ext import commands
+from sqlalchemy import null
+import youtube_dl
 import random
+from youtubesearchpython import *
 
 prefix = '!'
 watching = 'gerne Filme'
@@ -34,6 +38,46 @@ async def on_member_join(member):
 async def help(ctx):
     if ctx.channel.id in channels:
         await ctx.send('Aktuell stehen noch keine Befehle zur Verfügung!')
+
+@client.command()
+async def play(ctx, *args):
+    if len(args) == 1 and args[0].startswith("http"):
+        url = args[0]
+    elif len(args) == 0:
+        await ctx.reply('Dieser Befehl erfordert einen Wert!', mention_author=False)
+        return
+    else:
+        videosSearch = CustomSearch("".join(args), VideoSortOrder.relevance, limit = 1)
+        dict = videosSearch.result()
+        url = dict['result'][0]['link']
+    if ctx.author.voice is None:
+        await ctx.reply('Du musst einem Sprachkanal beitreten, um diesen Befehl verwenden zu können!', mention_author=False)
+        return
+    voice_channel = ctx.author.voice.channel
+    if ctx.voice_client is None:
+        await voice_channel.connect()
+    else:
+        await ctx.voice_client.move_to(voice_channel)
+
+    ctx.voice_client.stop()
+    FFMPEG_OPTIONS = {'before_options':'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options' : '-vn'}
+    YDL_OPTIONS = {'format':'bestaudio'}
+    vc = ctx.voice_client
+
+    with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
+        info = ydl.extract_info(url, download=False)
+        url2 = info['formats'][0]['url']
+        title = info['title']
+        source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+        vc.play(source)
+        await ctx.reply('{} wird nun gespielt!'.format(title), mention_author=False)
+
+@client.command()
+async def leave(ctx):
+    if ctx.voice_client is None:
+        await ctx.reply('Der Bot befindet sich in keinem Sprachkanal!', mention_author=False)
+    else:
+        await ctx.voice_client.disconnect()
 
 @client.event
 async def on_voice_state_update(member, before, after):
@@ -98,6 +142,7 @@ async def on_voice_state_update(member, before, after):
             existing_channel = discord.utils.get(member.guild.channels, id=before.channel.id)
             if existing_channel is not None:
                 await existing_channel.delete()
+                # disable kick on mute
             else:
                 print(str(existing_channel))
     elif before.channel and not after.channel:
