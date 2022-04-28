@@ -7,11 +7,16 @@ import random
 from youtubesearchpython import *
 
 prefix = '!'
-watching = 'gerne Filme'
-starter_role = 'Member'
-channels = [727254770531958875, 827625896756117585, 827627169903542313, 727252459524718659]
+watching = '00 Schneider – Jagd auf Nihil Baxter'
+
+default_role = 'Member'
+gameshow_role = 'Spielshow'
+
+response_channels = [727254770531958875, 827625896756117585, 827627169903542313, 727252459524718659]
+
 voice_category_id = 727484335015460916
 voice_channel_list = []
+
 private_category_id = 941980141972766760
 private_creating_room = 941983561337159720
 
@@ -31,12 +36,12 @@ async def on_ready():
 
 @client.event
 async def on_member_join(member):
-    role = discord.utils.get(member.guild.roles, name=starter_role)
+    role = discord.utils.get(member.guild.roles, name=default_role)
     await member.add_roles(role)
 
 @client.command()
 async def help(ctx):
-    if ctx.channel.id in channels:
+    if ctx.channel.id in response_channels:
         await ctx.send('Aktuell stehen noch keine Befehle zur Verfügung!')
 
 @client.command()
@@ -81,6 +86,8 @@ async def leave(ctx):
 
 @client.event
 async def on_voice_state_update(member, before, after):
+    if before.channel == after.channel:
+        return
     for guild in client.guilds:
         for channel in guild.voice_channels:
             if channel.category_id == voice_category_id:
@@ -98,10 +105,11 @@ async def on_voice_state_update(member, before, after):
         if existing_channel is not None:
             await existing_channel.delete()
         else:
-            print(str(existing_channel))
+            print('Fehler beim Löschen eines Game Rooms: ', str(existing_channel))
 
     voice_channel_list.clear()
 
+    # private talk
     if not before.channel:
         if after.channel.id == private_creating_room:
             category = client.get_channel(private_category_id)
@@ -142,7 +150,6 @@ async def on_voice_state_update(member, before, after):
             existing_channel = discord.utils.get(member.guild.channels, id=before.channel.id)
             if existing_channel is not None:
                 await existing_channel.delete()
-                # disable kick on mute
             else:
                 print(str(existing_channel))
     elif before.channel and not after.channel:
